@@ -1,9 +1,19 @@
 # HostConfViz
 Display environment and configuration information for .net core 3+ and .net 5+ applications
 
-It uses [Spectre.Console](https://github.com/spectreconsole/spectre.console) to render the information. It is best displayed in a console that supports ANSI colors and unicode character set. It will fall back to supported colors and character set if needed when used in for example Kubernetes.
+It uses [Spectre.Console](https://github.com/spectreconsole/spectre.console) to render the information. It is best displayed in a terminal that supports ANSI colors and unicode character set. It will fall back to supported colors and character set if needed when used in for example Kubernetes.
 
 There is currently no way to configure the colors or layout used in the rendering.
+
+## Features
+- Show environment information including application name, application version, environment name, framework version etc.
+- Show added configuration providers to the ConfigurationBuilder used.
+- Show key and values in a tree view aggregated from all configuration providers. Shows overridden values and wich configuration provider is the source for each value.\
+  The display is in the format of ```[provider #]| [Key] = [Value]``` where "#" is from the #-kolumn in the provider table.
+- Redact secrets from the configuration values where the key contains one of 'password', 'secret' or 'key'. It also removes the same values from connection strings. See picture below.
+
+![image](https://user-images.githubusercontent.com/803458/118053364-afb71b80-b384-11eb-8973-c8af65bff611.png)
+Colors of values depend of value type. Green = Uri, Purple = Boolean, Brown/Orange = String, Yellow = Number. Strike through values are overriden values. Strike through only visible in terminals supporting ANSI colors and unicode.
 
 ### Supported framework versions
 - netstandard 2.1
@@ -13,7 +23,7 @@ There is currently no way to configure the colors or layout used in the renderin
 - ### **HostConfViz.Sample.GenericHost**\
   Use the ```IHost``` from the ```IHostBuilder.Build()``` to call extension method ```IHost.DisplayHostInfo()```.
 - ### **HostConfViz.Sample.Simple**\
-  Manually create an instance of the ```HostInfo``` class by passing IConfiguration and IHostingEnvironment to it and then call ```HostInfo.Display()```
+  Manually create an instance of the ```HostInfo``` class by passing ```IConfiguration``` and ```IHostingEnvironment``` to it and then call ```HostInfo.Display()```
 
 ## Usage
 Most common usage is through extension method ```IHost.DisplayHostInfo()```.
