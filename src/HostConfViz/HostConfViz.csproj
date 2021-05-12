@@ -8,6 +8,8 @@
     <PackageId>HostConfViz</PackageId>
     <PackageTags>Hosting;Configuration</PackageTags>
     <Description>Display environment and configuration information for .net core 3+ and .net 5+ applications</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/mangeg/HostConfViz</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
