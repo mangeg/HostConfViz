@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Extensions.Hosting
 {
-    public static class HostInfoHostExtensions
+    public static class HostExtensions
     {
         public static HostInfo CreateHostInfo( this IHost host )
         {

@@ -16,14 +16,6 @@ using Spectre.Console.Rendering;
 
 namespace HostConfViz
 {
-    internal class HostInfoOptions
-    {
-        public bool DisplayEnvironment { get; set; } = true;
-        public bool DisplayConfig { get; set; } = true;
-        public bool IgnoreGlobalEnv { get; set; } = true;
-        public bool RedactSecrets { get; set; } = true;
-    }
-
     public class HostInfo
     {
         private readonly IConfiguration _config;
@@ -52,24 +44,24 @@ namespace HostConfViz
             _env = env;
 
             _options = new HostInfoOptions();
-            _config.GetSection( "HostInfo" ).Bind( _options );
+            _config.GetSection( "HostConfViz" ).Bind( _options );
         }
 
         public void Display()
         {
             if ( _options.DisplayEnvironment )
             {
-                PrintEnvironment();
+                RenderEnvironmentInfo();
             }
             if ( _options.DisplayConfig )
             {
-                PrintConfiguration();
+                RenderConfigurationInfo();
             }
 
             AnsiConsole.Render( new Rule().RuleStyle( _headerStyle ) );
         }
 
-        public void PrintEnvironment()
+        public void RenderEnvironmentInfo()
         {
             AnsiConsole.Render( new Rule( "🌳 Environment Details" ).LeftAligned().RuleStyle( _headerStyle ) );
             Table frameworkTable = new Table()
@@ -95,23 +87,23 @@ namespace HostConfViz
             AnsiConsole.Render( frameworkTable );
         }
 
-        public void PrintConfiguration()
+        public void RenderConfigurationInfo()
         {
             if ( _config is not IConfigurationRoot root )
             {
                 return;
             }
 
-            List<IConfigurationProvider> providers = new();
-            Stack<IConfigurationProvider> providersStack = new();
-            root.Providers.Reverse().ToList().ForEach( providersStack.Push );
-            while ( providersStack.TryPop( out IConfigurationProvider provider ) )
+            List<IConfigurationProvider> allProviders = new();
+            Stack<IConfigurationProvider> providersToProcess = new();
+            root.Providers.Reverse().ToList().ForEach( providersToProcess.Push );
+            while ( providersToProcess.TryPop( out IConfigurationProvider? provider ) )
             {
                 if ( provider is ChainedConfigurationProvider chainedProvider )
                 {
                     foreach ( IConfigurationProvider innerProvider in chainedProvider.GetChianedProviders().Reverse() )
                     {
-                        providersStack.Push( innerProvider );
+                        providersToProcess.Push( innerProvider );
                     }
 
                     continue;
@@ -120,39 +112,17 @@ namespace HostConfViz
                 if ( provider is EnvironmentVariablesConfigurationProvider envProvider )
                 {
                     var prefix = envProvider.GetPrefix();
-                    if ( string.IsNullOrWhiteSpace( prefix ) && _options.IgnoreGlobalEnv )
+                    if ( string.IsNullOrWhiteSpace( prefix ) && _options.IgnoreGlobalEnvironment )
                     {
                         continue;
                     }
                 }
 
-                providers.Add( provider );
-            }
-
-            void RecurseChildren( IEnumerable<IConfigurationSection> children, Node parent )
-            {
-                foreach ( IConfigurationSection child in children )
-                {
-                    Stack<ValueInfo> values = HandleKey( providers, child.Path );
-                    var node = new Node( child.Key ) { Values = values };
-                    parent.Children.Add( node );
-
-                    RecurseChildren( child.GetChildren(), node );
-                }
-
-                IEnumerable<Node> withValues = parent.Children.Where( c => c.Values.Count == 0 );
-                IEnumerable<Node> withoutValues = parent.Children.Where( c => c.Values.Count > 0 );
-                var newValueList = new List<Node>();
-                newValueList.AddRange( withValues.OrderBy( v => v.Name ) );
-                newValueList.AddRange( withoutValues.OrderBy( v => v.Name ) );
-                parent.Children = newValueList;
+                allProviders.Add( provider );
             }
 
             var rootNode = new Node( string.Empty );
             RecurseChildren( root.GetChildren(), rootNode );
-
-            AnsiConsole.Render( new Rule( "🔧 Configuration Details" ).LeftAligned().RuleStyle( _headerStyle ) );
-
 
             Table providerTable = new Table()
                 .BorderStyle( _mainStyle )
@@ -161,13 +131,13 @@ namespace HostConfViz
                 .AddColumn( new TableColumn( new Text( "Type", _headerStyle ) ) )
                 .AddColumn( new TableColumn( new Text( "Info", _headerStyle ) ) );
 
-            foreach ( IConfigurationProvider provider in providers )
+            foreach ( IConfigurationProvider provider in allProviders )
             {
                 if ( provider is ChainedConfigurationProvider chainedProvider )
                 {
                     foreach ( IConfigurationProvider innerProvider in chainedProvider.GetChianedProviders().Reverse() )
                     {
-                        providersStack.Push( innerProvider );
+                        providersToProcess.Push( innerProvider );
                     }
 
                     continue;
@@ -203,6 +173,7 @@ namespace HostConfViz
                 info );
             }
 
+            AnsiConsole.Render( new Rule( "🔧 Configuration Details" ).LeftAligned().RuleStyle( _headerStyle ) );
             AnsiConsole.Render( providerTable );
             Tree tree = new Tree( HeaderText( "Root" ) )
                 .Style( _mainStyle )
@@ -210,6 +181,25 @@ namespace HostConfViz
             RenderNode( tree, rootNode );
 
             AnsiConsole.Render( new Padder( tree, new Padding( 2, 0 ) ) );
+
+            void RecurseChildren( IEnumerable<IConfigurationSection> children, Node parent )
+            {
+                foreach ( IConfigurationSection child in children )
+                {
+                    Stack<ValueInfo> values = HandleKey( allProviders, child.Path );
+                    var node = new Node( child.Key ) { Values = values };
+                    parent.Children.Add( node );
+
+                    RecurseChildren( child.GetChildren(), node );
+                }
+
+                IEnumerable<Node> withValues = parent.Children.Where( c => c.Values.Count == 0 );
+                IEnumerable<Node> withoutValues = parent.Children.Where( c => c.Values.Count > 0 );
+                var newValueList = new List<Node>();
+                newValueList.AddRange( withValues.OrderBy( v => v.Name ) );
+                newValueList.AddRange( withoutValues.OrderBy( v => v.Name ) );
+                parent.Children = newValueList;
+            }
         }
 
         private void RenderNode( IHasTreeNodes target, Node node )
@@ -247,7 +237,7 @@ namespace HostConfViz
                             new Text( "=" ),
                             Format( primaryValue ) );
 
-                    while ( node.Values.TryPop( out ValueInfo value ) )
+                    while ( node.Values.TryPop( out ValueInfo? value ) )
                     {
                         var secondaryValue = value.Value;
                         GetReplacementForKey( node.Name, ref secondaryValue );
@@ -326,7 +316,7 @@ namespace HostConfViz
 
                 return p;
             }
-            if ( Uri.TryCreate( text, UriKind.Absolute, out Uri uri ) )
+            if ( Uri.TryCreate( text, UriKind.Absolute, out Uri? _ ) )
             {
                 return new Markup( $"[link {_2ndValueStyle.ToMarkup()}]{text}[/]" );
             }
@@ -341,7 +331,7 @@ namespace HostConfViz
                 _ => obj.ToString()
             };
 
-            return Format( stringValue, decoration );
+            return Format( stringValue!, decoration );
         }
 
         private bool GetReplacementForKey( string key, ref string target )
@@ -363,16 +353,16 @@ namespace HostConfViz
             return false;
         }
 
-        private static Text ValueText( string text, Decoration dec = default ) => Text( text, _valueStyle, dec );
-        private static Text ValueText( object obj, Decoration dec = default ) => ValueText( obj.ToString(), dec );
-        private static Text KeyText( string text, Decoration dec = default ) => Text( text, _keyStyle, dec );
-        private static Text KeyText( object obj, Decoration dec = default ) => KeyText( obj.ToString(), dec );
-        private static Text HeaderText( string text, Decoration dec = default ) => Text( text, _headerStyle, dec );
-        private static Text HeaderText( object obj, Decoration dec = default ) => HeaderText( obj.ToString(), dec );
-        private static Text NumberText( string text, Decoration dec = default ) => Text( text, _numberStyle, dec );
-        private static Text NumberText( object obj, Decoration dec = default ) => NumberText( obj.ToString(), dec );
-        private static Text BoolText( string text, Decoration dec = default ) => Text( text, _boolStyle, dec );
-        private static Text BoolText( object obj, Decoration dec = default ) => BoolText( obj.ToString(), dec );
+        private static Text ValueText( string text, Decoration dec = Decoration.None ) => Text( text, _valueStyle, dec );
+        private static Text ValueText( object obj, Decoration dec = Decoration.None ) => ValueText( obj.ToString()!, dec );
+        private static Text KeyText( string text, Decoration dec = Decoration.None ) => Text( text, _keyStyle, dec );
+        private static Text KeyText( object obj, Decoration dec = Decoration.None ) => KeyText( obj.ToString()!, dec );
+        private static Text HeaderText( string text, Decoration dec = Decoration.None ) => Text( text, _headerStyle, dec );
+        private static Text HeaderText( object obj, Decoration dec = Decoration.None ) => HeaderText( obj.ToString()!, dec );
+        private static Text NumberText( string text, Decoration dec = Decoration.None ) => Text( text, _numberStyle, dec );
+        private static Text NumberText( object obj, Decoration dec = Decoration.None ) => NumberText( obj.ToString()!, dec );
+        private static Text BoolText( string text, Decoration dec = Decoration.None ) => Text( text, _boolStyle, dec );
+        private static Text BoolText( object obj, Decoration dec = Decoration.None ) => BoolText( obj.ToString()!, dec );
 
         private static Text Text( string text, Style style, Decoration decoration = default ) => new( text, style.Decoration( decoration ) );
 

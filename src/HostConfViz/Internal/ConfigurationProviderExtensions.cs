@@ -12,7 +12,7 @@ namespace HostConfViz.Internal
         internal static string GetPrefix( this EnvironmentVariablesConfigurationProvider provider )
         {
             Type type = typeof( EnvironmentVariablesConfigurationProvider );
-            FieldInfo field = type.GetField( "_prefix", BindingFlags.NonPublic | BindingFlags.Instance );
+            FieldInfo? field = type.GetField( "_prefix", BindingFlags.NonPublic | BindingFlags.Instance );
             string? value = field?.GetValue( provider ) as string;
             return value ?? string.Empty;
         }
@@ -20,7 +20,7 @@ namespace HostConfViz.Internal
         internal static IEnumerable<IConfigurationProvider> GetChianedProviders( this ChainedConfigurationProvider provider )
         {
             Type type = typeof( ChainedConfigurationProvider );
-            FieldInfo configField = type.GetField( "_config", BindingFlags.NonPublic | BindingFlags.Instance );
+            FieldInfo? configField = type.GetField( "_config", BindingFlags.NonPublic | BindingFlags.Instance );
             if ( configField?.GetValue( provider ) is IConfigurationRoot configValue )
             {
                 return configValue.Providers;
