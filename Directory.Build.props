@@ -1,0 +1,33 @@
+<Project>
+    <PropertyGroup>
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+        <NoWarn>$(NoWarn);CA1014</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
+        <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <RepositoryUrl>https://github.com/mangeg/HostConfViz.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <Authors>Magnus Gideryd</Authors>
+        <Version>0.9</Version>
+    </PropertyGroup>
+
+    <!--Build constants-->
+    <PropertyGroup Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(TargetFramework)', '^net\d'))">
+        <DefineConstants>$(DefineConstants);NETFX</DefineConstants>
+    </PropertyGroup>
+
+    <!--Common settings-->
+    <PropertyGroup>
+        <CommonCoreVersion>5.0.6</CommonCoreVersion>
+    </PropertyGroup>
+</Project>
