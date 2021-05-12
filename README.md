@@ -5,6 +5,8 @@ It uses [Spectre.Console](https://github.com/spectreconsole/spectre.console) to 
 
 There is currently no way to configure the colors or layout used in the rendering.
 
+Inspired by a blog post by [Andrew Lock](https://github.com/andrewlock): https://andrewlock.net/viewing-overriden-configuration-values-in-aspnetcore/
+
 ## Features
 - Show environment information including application name, application version, environment name, framework version etc.
 - Show added configuration providers to the ConfigurationBuilder used.
